@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="tr" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<script>
+(function(){try{var t=localStorage.getItem('emv');if(t!=='dark'&&t!=='light')t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.setAttribute('data-theme',t)}catch(e){}})();
+</script>
+<title>Emvalis — Fazla Mesai Dağıtıcı</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 60'%3E%3Crect width='60' height='60' rx='12' fill='%23041220'/%3E%3Cpolygon points='30,4 56,18 56,42 30,56 4,42 4,18' fill='none' stroke='%23D4A840' stroke-width='3' opacity='.6'/%3E%3Ccircle cx='30' cy='30' r='16' fill='none' stroke='%23EEC86A' stroke-width='3.5'/%3E%3Cline x1='30' y1='30' x2='30' y2='19' stroke='%23EEC86A' stroke-width='3.5' stroke-linecap='round'/%3E%3Cline x1='30' y1='30' x2='38' y2='35' stroke='%23D4A840' stroke-width='3.5' stroke-linecap='round'/%3E%3Ccircle cx='30' cy='30' r='2.5' fill='%23EEC86A'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="patch.css">
+</head>
+<body>
+
+<!-- BG -->
+<div class="bg-layer" aria-hidden="true">
+  <div class="hex-grid"></div>
+  <div class="radial-glow glow-1"></div>
+  <div class="radial-glow glow-2"></div>
+  <div class="radial-glow glow-3"></div>
+  <div class="scanlines"></div>
+</div>
+<canvas id="particleCanvas" aria-hidden="true"></canvas>
+
+<!-- MOBILE DRAWER OVERLAY -->
+<div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+
+<!-- MOBILE DRAWER -->
+<nav class="mobile-drawer" id="mobileDrawer" aria-label="Mobil Menü">
+  <div class="drawer-header">
+    <div class="drawer-logo">
+      <span class="drawer-brand">Emvalis</span>
+      <span class="drawer-sub">Fazla Mesai Sistemi</span>
+    </div>
+    <button class="drawer-close" onclick="closeDrawer()" aria-label="Menüyü kapat">✕</button>
+  </div>
+  <div class="drawer-nav">
+    <button class="drawer-nav-btn" onclick="showSection('dashboard');closeDrawer()"><span>⬡</span> Panel</button>
+    <button class="drawer-nav-btn" onclick="showSection('personel');closeDrawer()"><span>◈</span> Personel</button>
+    <button class="drawer-nav-btn" onclick="showSection('dagitim');closeDrawer()"><span>◉</span> Dağıtım</button>
+    <button class="drawer-nav-btn" onclick="showSection('rapor');closeDrawer()"><span>◈</span> Rapor</button>
+  </div>
+  <div class="drawer-footer">
+    <button class="drawer-theme-btn" onclick="toggleTheme();closeDrawer()" id="drawerThemeBtn">☀️ Aydınlık Tema</button>
+  </div>
+</nav>
+
+<!-- HEADER -->
+<header class="app-header" role="banner">
+  <div class="header-inner">
+    <button class="hamburger" id="hamburgerBtn" onclick="openDrawer()" aria-label="Menüyü aç" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="logo-zone">
+      <div class="logo-emblem" aria-hidden="true">
+        <svg viewBox="0 0 60 60" class="emblem-svg">
+          <polygon points="30,4 56,18 56,42 30,56 4,42 4,18" fill="none" stroke="var(--gold)" stroke-width="1.5" opacity="0.55"/>
+          <polygon points="30,10 50,21 50,39 30,50 10,39 10,21" fill="none" stroke="var(--gold)" stroke-width="1" opacity="0.75"/>
+          <circle cx="30" cy="30" r="10" fill="none" stroke="var(--gold)" stroke-width="1.5"/>
+          <circle cx="30" cy="30" r="4" fill="var(--gold)" opacity="0.95"/>
+          <line x1="30" y1="4" x2="30" y2="20" stroke="var(--gold)" stroke-width="0.8" opacity="0.7"/>
+          <line x1="30" y1="40" x2="30" y2="56" stroke="var(--gold)" stroke-width="0.8" opacity="0.7"/>
+          <line x1="4" y1="18" x2="17" y2="25" stroke="var(--gold)" stroke-width="0.8" opacity="0.7"/>
+          <line x1="43" y1="35" x2="56" y2="42" stroke="var(--gold)" stroke-width="0.8" opacity="0.7"/>
+          <line x1="56" y1="18" x2="43" y2="25" stroke="var(--gold)" stroke-width="0.8" opacity="0.7"/>
+          <line x1="17" y1="35" x2="4" y2="42" stroke="var(--gold)" stroke-width="0.8" opacity="0.7"/>
+        </svg>
+        <div class="emblem-pulse"></div>
+      </div>
+      <div class="logo-text">
+        <span class="logo-brand">Emvalis</span>
+        <span class="logo-sub">Fazla Mesai Dağıtım Sistemi</span>
+      </div>
+    </div>
+    <div class="header-meta">
+      <div class="clock-display" id="liveClock" aria-live="polite">--:--:--</div>
+      <div class="date-display" id="liveDate">-- --- ----</div>
+    </div>
+    <nav class="top-nav" aria-label="Ana Navigasyon">
+      <button class="nav-btn active" data-section="dashboard" onclick="showSection('dashboard')"><span class="nav-icon">⬡</span> Panel</button>
+      <button class="nav-btn" data-section="personel" onclick="showSection('personel')"><span class="nav-icon">◈</span> Personel</button>
+      <button class="nav-btn" data-section="dagitim" onclick="showSection('dagitim')"><span class="nav-icon">◉</span> Dağıtım</button>
+      <button class="nav-btn" data-section="rapor" onclick="showSection('rapor')"><span class="nav-icon">◈</span> Rapor</button>
+    </nav>
+    <div class="header-controls">
+      <a class="theme-toggle home-btn" href="https://emvalis.github.io/" title="Ana Sayfa" aria-label="Ana Sayfa">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5a.5.5 0 0 0 .5.5h4v-6h4v6h4a.5.5 0 0 0 .5-.5V10"/></svg>
+      </a>
+      <button class="theme-toggle" id="themeToggleBtn" onclick="toggleTheme()" aria-label="Tema değiştir" title="Tema Değiştir ">
+        <span class="theme-icon" id="themeIcon">☀️</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- NOTIFICATION CONTAINER -->
+<div class="notif-container" id="notifContainer" aria-live="polite" aria-label="Bildirimler"></div>
+
+
+<!-- MAIN -->
+<main class="app-main" id="appMain">
+
+  <!-- ═══ DASHBOARD ═══ -->
+  <section id="sec-dashboard" class="section active" aria-label="Ana Panel">
+    <div class="section-hero">
+      <h1 class="hero-title">
+        <span class="title-line">Fazla Mesai</span>
+        <span class="title-accent">Dağıtım Merkezi</span>
+      </h1>
+      <p class="hero-desc">Kadrolu ve sözleşmeli personelin aylık fazla mesai çizelgesini akıllı algoritmayla yönetin. Orijinal şablona birebir uygun XLSX çıktısı alın.</p>
+    </div>
+
+    <div class="stats-row" role="region" aria-label="İstatistikler">
+      <div class="stat-card" style="--delay:.08s"><div class="stat-icon" aria-hidden="true">⬡</div><div class="stat-value" id="stat-kad">0</div><div class="stat-label">Kadrolu Personel</div><div class="stat-bar"><div class="stat-bar-fill" id="sbar-kad"></div></div></div>
+      <div class="stat-card" style="--delay:.16s"><div class="stat-icon" aria-hidden="true">◈</div><div class="stat-value" id="stat-soz">0</div><div class="stat-label">Sözleşmeli Personel</div><div class="stat-bar"><div class="stat-bar-fill" id="sbar-soz"></div></div></div>
+      <div class="stat-card" style="--delay:.24s"><div class="stat-icon" aria-hidden="true">◉</div><div class="stat-value" id="stat-tatil">0</div><div class="stat-label">Resmi Tatil Günü</div><div class="stat-bar"><div class="stat-bar-fill" id="sbar-tatil"></div></div></div>
+      <div class="stat-card" style="--delay:.32s"><div class="stat-icon" aria-hidden="true">✦</div><div class="stat-value" id="stat-ay">—</div><div class="stat-label">Aktif Dönem</div><div class="stat-bar"><div class="stat-bar-fill" style="width:100%"></div></div></div>
+    </div>
+
+    <!-- VIDEO + HOW IT WORKS -->
+    <div class="demo-section">
+      <h2 class="panel-title">Nasıl Kullanılır?</h2>
+      <div class="demo-grid">
+        <!-- YouTube Embed -->
+        <div class="demo-video-card" id="demoVideoCard">
+          <div class="video-thumbnail" onclick="openVideoModal()" role="button" tabindex="0" aria-label="Demo videosunu izle" onkeydown="if(event.key==='Enter')openVideoModal()">
+            <div class="video-thumb-bg">
+              <img src="https://img.youtube.com/vi/B9VRvOKKwfs/maxresdefault.jpg" alt="Demo Video" class="thumb-img" onerror="this.style.display='none'">
+              <div class="video-overlay">
+                <div class="play-btn" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="white" width="48" height="48"><path d="M8 5v14l11-7z"/></svg>
+                </div>
+                <div class="video-label">Nasıl Kullanılır? </div>
+                <div class="video-sublabel">YouTube'da Açılır</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Animated Infographic -->
+        <div class="infographic-card">
+          <div class="infographic-steps">
+            <div class="infostep" style="--si:0">
+              <div class="infostep-num">01</div>
+              <div class="infostep-icon">◈</div>
+              <div class="infostep-text">
+                <strong>Personel Ekle</strong>
+                <span>Kadrolu veya sözleşmeli personelleri sicil, ad ve ünvanlarıyla kaydedin</span>
+              </div>
+              <div class="infostep-arrow" aria-hidden="true">→</div>
+            </div>
+            <div class="infostep" style="--si:1">
+              <div class="infostep-num">02</div>
+              <div class="infostep-icon">⊛</div>
+              <div class="infostep-text">
+                <strong>Tatil & İzin Tanımla</strong>
+                <span>Resmi tatilleri ve personel izin günlerini ayarlayın</span>
+              </div>
+              <div class="infostep-arrow" aria-hidden="true">→</div>
+            </div>
+            <div class="infostep" style="--si:2">
+              <div class="infostep-num">03</div>
+              <div class="infostep-icon">◉</div>
+              <div class="infostep-text">
+                <strong>Mesai Dağıt</strong>
+                <span>Hedef saat ve odak seçin, algoritma otomatik dağıtır</span>
+              </div>
+              <div class="infostep-arrow" aria-hidden="true">→</div>
+            </div>
+            <div class="infostep" style="--si:3">
+              <div class="infostep-num">04</div>
+              <div class="infostep-icon">⊟</div>
+              <div class="infostep-text">
+                <strong>XLSX İndir</strong>
+                <span>Orijinal şablona uygun, renkli Excel çizelgesini alın</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+
+    
+
+    <!-- FEATURE SHOWCASE -->
+    <div class="feature-showcase">
+      <h2 class="panel-title">Özellikler</h2>
+      <div class="feature-grid">
+
+        <div class="feature-card" style="--fc:0">
+          <div class="feature-icon-wrap"><span class="feature-icon">🧮</span></div>
+          <div class="feature-body">
+            <div class="feature-title">Akıllı Dağıtım Algoritması</div>
+            <div class="feature-desc">Hedef saate göre, kurallara uyan rastgele plan üretir. Her seferinde farklı bir plan çıkar; günlere ve haftalara dengeli yayılır, herkes sırayla pay alır.</div>
+          </div>
+        </div>
+
+        <div class="feature-card" style="--fc:1">
+          <div class="feature-icon-wrap"><span class="feature-icon">⚙️</span></div>
+          <div class="feature-body">
+            <div class="feature-title">Kişi Bazlı Ayarlar</div>
+            <div class="feature-desc">Her personele özel hedef saat, “sadece hafta içi / sadece hafta sonu” gibi odak ve çalışamayacağı günler tanımlanır. Toplu uygulama desteklenir.</div>
+          </div>
+        </div>
+
+        <div class="feature-card" style="--fc:2">
+          <div class="feature-icon-wrap"><span class="feature-icon">🛡️</span></div>
+          <div class="feature-body">
+            <div class="feature-title">Çalışma Sınırlarına Uyum</div>
+            <div class="feature-desc">Günlük ve haftalık saat üst sınırları, üst üste mesai günü sınırı ve hafta sonunda tek gün kuralı otomatik uygulanır. Hedefe ulaşılamayan kişi raporda işaretlenir.</div>
+          </div>
+        </div>
+
+        <div class="feature-card" style="--fc:3">
+          <div class="feature-icon-wrap"><span class="feature-icon">🇹🇷</span></div>
+          <div class="feature-body">
+            <div class="feature-title">Hazır Resmî Tatil Listesi</div>
+            <div class="feature-desc">Sabit tatiller ile Ramazan ve Kurban bayramları tek tıkla eklenir. Takvimden elle tatil eklenip çıkarılabilir; tatiller dağıtımda otomatik atlanır.</div>
+          </div>
+        </div>
+
+        <div class="feature-card" style="--fc:4">
+          <div class="feature-icon-wrap"><span class="feature-icon">📅</span></div>
+          <div class="feature-body">
+            <div class="feature-title">Kolay İzin Girişi</div>
+            <div class="feature-desc">İzni tek tek yazmaya gerek yok: tarih aralığı seçin, gün sayısı girin, metin yapıştırın veya takvimde sürükleyin. Hafta sonu ve tatiller akıllıca hesaplanır.</div>
+          </div>
+        </div>
+
+        <div class="feature-card" style="--fc:5">
+          <div class="feature-icon-wrap"><span class="feature-icon">👥</span></div>
+          <div class="feature-body">
+            <div class="feature-title">Kadrolu & Sözleşmeli</div>
+            <div class="feature-desc">İki ayrı personel grubu; sicil, ad ve ünvan takibi. Her grup kendi ayarlarıyla ayrı dağıtılır.</div>
+          </div>
+        </div>
+
+        <div class="feature-card" style="--fc:6">
+          <div class="feature-icon-wrap"><span class="feature-icon">📊</span></div>
+          <div class="feature-body">
+            <div class="feature-title">XLSX Şablonu</div>
+            <div class="feature-desc">Orijinal Kurum şablonu birebir korunur. Giriş/çıkış saatleri, haftalık ve aylık toplamlar otomatik hesaplanıp Excel olarak indirilir (Ctrl+E).</div>
+          </div>
+        </div>
+
+        <div class="feature-card" style="--fc:7">
+          <div class="feature-icon-wrap"><span class="feature-icon">🔍</span></div>
+          <div class="feature-body">
+            <div class="feature-title">Rapor & Filtreleme</div>
+            <div class="feature-desc">Dağıtımdan sonra Rapor sekmesinde: kişi bazlı filtre, yalnızca fazla mesaili günler görünümü ve dağıtım özeti (ortalama, en çok/en az, mesaili gün sayısı, kişi bazlı bar grafik).</div>
+          </div>
+        </div>
+
+        <div class="feature-card" style="--fc:8">
+          <div class="feature-icon-wrap"><span class="feature-icon">📂</span></div>
+          <div class="feature-body">
+            <div class="feature-title">CSV İçe / Dışa Aktar</div>
+            <div class="feature-desc">Personel listesini CSV ile toplu yükleyin veya mevcut listeyi CSV olarak indirin.</div>
+          </div>
+        </div>
+
+        <div class="feature-card" style="--fc:9">
+          <div class="feature-icon-wrap"><span class="feature-icon">💾</span></div>
+          <div class="feature-body">
+            <div class="feature-title">Otomatik Kayıt & Gizlilik</div>
+            <div class="feature-desc">Tüm veriler yalnızca bu cihazdaki tarayıcıda saklanır, sunucuya gönderilmez. Sayfa kapatılsa bile personel, izin ve son plan korunur.</div>
+          </div>
+        </div>
+
+        <div class="feature-card" style="--fc:10">
+          <div class="feature-icon-wrap"><span class="feature-icon">🌗</span></div>
+          <div class="feature-body">
+            <div class="feature-title">Açık / Koyu Tema & Mobil Uyum</div>
+            <div class="feature-desc">Tema tercihiniz hatırlanır (Ctrl+T). Telefon ve tablette de rahat kullanılacak şekilde tasarlandı.</div>
+          </div>
+        </div>
+
+        <div class="feature-card" style="--fc:11">
+          <div class="feature-icon-wrap"><span class="feature-icon">💬</span></div>
+          <div class="feature-body">
+            <div class="feature-title">Yardım & Geri Bildirim</div>
+            <div class="feature-desc">Algoritmanın nasıl çalıştığı pencerede açıklanır; öneri, hata ve görüşlerinizi tek tıkla iletebilirsiniz.</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+
+
+
+
+
+  </section>
+
+  <!-- ═══ PERSONEL ═══ -->
+  <section id="sec-personel" class="section" aria-label="Personel Yönetimi">
+    <div class="panel-header">
+      <h2 class="panel-title">Personel Yönetimi</h2>
+      <div class="panel-header-actions">
+        <div class="tab-switcher">
+          <button class="tab-btn active" onclick="switchPersonelTab('kadrolu')" id="tbtn-kadrolu">⬡ Kadrolu</button>
+          <button class="tab-btn" onclick="switchPersonelTab('sozlesmeli')" id="tbtn-sozlesmeli">◈ Sözleşmeli</button>
+        </div>
+        <div class="csv-actions">
+          <button class="btn-icon" onclick="document.getElementById('excelImportInput').click()" title="Excel'den Personel Yükle" aria-label="Excel yükle">📥 Excel'den İçe Aktar</button>
+          <input type="file" id="excelImportInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="importExcel(event)">
+          <button class="btn-icon" onclick="document.getElementById('csvImportInput').click()" title="CSV'den Personel Yükle" aria-label="CSV yükle">📂 CSV Yükle</button>
+          <button class="btn-icon" onclick="exportPersonelCSV()" title="Personeli CSV'ye Aktar" aria-label="CSV indir">💾 CSV İndir</button>
+          <input type="file" id="csvImportInput" accept=".csv" style="display:none" onchange="importCSV(event)">
+        </div>
+      </div>
+    </div>
+
+    <div class="tip-banner" role="note">
+      <span class="tip-ico" aria-hidden="true">💡</span>
+      <p><strong>İpucu:</strong> Personeli tek tek eklemek yerine; <b>TAKBİS &gt; Başvuru &gt; Personel Puantaj Listesi</b> ekranına sağ tıklayıp Excel’e aktardığınız <b>PERSONEL PUAN TOPLAM</b> dosyasını <span class="tip-btn">📥 Excel'den İçe Aktar</span> butonuyla yükleyerek tüm listenizi saniyeler içinde aktarabilirsiniz.</p>
+    </div>
+
+    <div class="personel-layout">
+      <div class="add-form-card">
+        <h3 class="form-title">⊕ Yeni Personel Ekle</h3>
+        <div class="field-group">
+          <label class="field-label" for="inp-sicil">Sicil No <span class="req" aria-hidden="true">*</span></label>
+          <input type="text" id="inp-sicil" class="field-input" placeholder="12345" autocomplete="off" inputmode="numeric">
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="inp-ad">Ad Soyad <span class="req" aria-hidden="true">*</span></label>
+          <input type="text" id="inp-ad" class="field-input" placeholder="Ahmet Kaya" autocomplete="off">
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="inp-unvan">Ünvan</label>
+          <input type="text" id="inp-unvan" class="field-input" placeholder="Şef, Uzman, Memur..." autocomplete="off">
+        </div>
+        <button class="btn-primary" onclick="addPerson()"><span aria-hidden="true">⊕</span> Personel Ekle</button>
+        
+        <div class="form-divider"></div>
+        <h3 class="form-title" style="margin-top:0">⊛ Resmi Tatiller</h3>
+        <p class="field-hint">Tatil günleri dağıtımda otomatik atlanır.</p>
+        <button class="btn-secondary w-full" onclick="openHolidayModal()">⊛ Tatil Günlerini Düzenle</button>
+        <div class="holiday-chips" id="holidayChips" style="margin-top:.9rem"></div>
+      </div>
+
+      <div class="personel-list-card">
+        <div class="list-header">
+          <span id="active-group-label">Kadrolu Personel</span>
+          <span class="count-badge" id="personel-count">0 kişi</span>
+        </div>
+        <div class="personel-list" id="personelList" role="list"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ DAĞITIM ═══ -->
+  <section id="sec-dagitim" class="section" aria-label="Mesai Dağıtım Ayarları">
+    <div class="panel-header">
+      <h2 class="panel-title">Mesai Dağıtım Ayarları</h2>
+      <div style="font-size:.88rem;color:var(--text-muted)">Parametreleri ayarlayın, dağıtımı başlatın</div>
+    </div>
+    <div class="settings-grid">
+      <div class="settings-card">
+        <h3 class="settings-card-title">⬡ Dönem & Grup</h3>
+        <div class="field-group">
+          <label class="field-label" for="set-grup">Personel Grubu</label>
+          <select id="set-grup" class="field-select" onchange="updatePersonelInfoBox()">
+            <option value="kadrolu">Kadrolu</option>
+            <option value="sozlesmeli">Sözleşmeli</option>
+          </select>
+        </div>
+        <div class="two-col">
+          <div class="field-group">
+            <label class="field-label" for="set-yil">Yıl</label>
+            <input type="number" id="set-yil" class="field-input" value="2025" min="2000" max="2100" inputmode="numeric">
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="set-ay">Ay</label>
+            <select id="set-ay" class="field-select">
+              <option value="1">Ocak</option><option value="2">Şubat</option><option value="3">Mart</option>
+              <option value="4">Nisan</option><option value="5">Mayıs</option><option value="6">Haziran</option>
+              <option value="7">Temmuz</option><option value="8">Ağustos</option><option value="9">Eylül</option>
+              <option value="10">Ekim</option><option value="11">Kasım</option><option value="12">Aralık</option>
+            </select>
+          </div>
+        </div>
+        <div class="info-box" id="personel-info-box">Grup seçerek personel sayısını görün.</div>
+      </div>
+      <div class="settings-card">
+        <h3 class="settings-card-title">◉ Mesai Parametreleri</h3>
+        <div class="field-group">
+          <label class="field-label" for="set-hedef">Aylık Hedef — Kişi Başı (Saat)</label>
+          <div class="slider-row">
+            <input type="range" id="set-hedef" class="field-range" min="0" max="200" value="50" aria-describedby="set-hedef-val">
+            <span class="slider-val" id="set-hedef-val" aria-live="polite">50 sa</span>
+          </div>
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="set-blok">Dağıtım Blok Boyutu (Dakika)</label>
+          <div class="slider-row">
+            <input type="range" id="set-blok" class="field-range" min="15" max="120" step="15" value="30" aria-describedby="set-blok-val">
+            <span class="slider-val" id="set-blok-val" aria-live="polite">30 dk</span>
+          </div>
+        </div>
+        <label class="toggle-row">
+          <input type="checkbox" id="set-haftasonu" class="toggle-input" checked>
+          <span class="toggle-slider"></span>
+          <span class="toggle-label">Hafta Sonu Çalışılabilir (09:00–16:00)</span>
+        </label>
+      </div>
+      <div class="settings-card">
+        <h3 class="settings-card-title">◈ Dağıtım Modu & Odak</h3>
+        <div class="radio-group" role="radiogroup" aria-label="Dağıtım modu">
+          <label class="radio-card">
+            <input type="radio" name="dagitim" value="esit" checked>
+            <span class="radio-content"><span class="radio-title">⊜ Eşit Dağıtım</span><span class="radio-desc">Her kişiye aynı hedef saat</span></span>
+          </label>
+          <label class="radio-card">
+            <input type="radio" name="dagitim" value="rastgele">
+            <span class="radio-content"><span class="radio-title">⊛ Ağırlıklı Rastgele</span><span class="radio-desc">Kişi bazlı farklı miktarlar</span></span>
+          </label>
+        </div>
+        <div class="field-group" style="margin-top:1rem">
+          <label class="field-label" for="set-odak">Mesai Yoğunluk Odağı</label>
+          <select id="set-odak" class="field-select">
+            <option value="balanced">Dengeli (50/50)</option>
+            <option value="weekend">Hafta Sonuna Yoğunlaş (70/30)</option>
+            <option value="weekday">Hafta İçine Yoğunlaş (30/70)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="distribute-action">
+      <button class="btn-distribute" onclick="generateDistribution()" aria-label="Mesai dağıt ve tablo oluştur (Ctrl+G)">
+        <span class="distribute-icon" aria-hidden="true">◉</span>
+        <span class="distribute-text">Mesai Dağıt ve Tablo Oluştur</span>
+        <div class="distribute-ripple" aria-hidden="true"></div>
+      </button>
+    </div>
+  </section>
+
+  <!-- ═══ RAPOR ═══ -->
+  <section id="sec-rapor" class="section" aria-label="Mesai Raporu">
+    <div class="panel-header">
+      <h2 class="panel-title" id="rapor-title">Mesai Çizelgesi</h2>
+      <div class="rapor-actions">
+        <button class="btn-excel" onclick="exportExcel()" aria-label="XLSX indir (Ctrl+E)">📥 XLSX İndir</button>
+        <!-- <button class="btn-secondary" onclick="window.print()" aria-label="Yazdır">🖨️</button> -->
+      </div>
+    </div>
+
+    <!-- Distribution Summary Chart -->
+    <div class="dist-summary" id="distSummary">
+      <h3 class="summary-title">Dağıtım Özeti</h3>
+      <div class="summary-stats" id="summaryStats">
+        <span style="color:var(--text-muted);font-size:.88rem">Dağıtım yaptıktan sonra burada ortalama, en çok / en az mesai, mesaili gün sayısı ve kişi bazlı bar grafik görünür.</span>
+      </div>
+      <div class="summary-chart" id="summaryChart" aria-label="Dağıtım bar grafik"></div>
+    </div>
+
+    <!-- Filters -->
+    <div class="rapor-filters" id="raporFilters">
+      <div class="filter-row">
+        <label class="field-label" for="filterPerson" style="margin:0">Kişi Filtrele:</label>
+        <select id="filterPerson" class="field-select filter-select" onchange="applyFilter()">
+          <option value="">Tüm Personel</option>
+        </select>
+
+      </div>
+
+    </div>
+
+    <div class="table-legend">
+      <span class="tleg-item"><span class="tleg-dot" style="background:#C6EFCE;border:1px solid #82C080"></span>Hft içi mesai</span>
+      <span class="tleg-item"><span class="tleg-dot" style="background:#FFD966;border:1px solid #CCA800"></span>Hft sonu</span>
+      <span class="tleg-item"><span class="tleg-dot" style="background:#D9D9D9;border:1px solid #999"></span>İzin/Tatil</span>
+      <span class="tleg-item"><span class="tleg-dot" style="background:#D9EAF7;border:1px solid #9CC3E5"></span>Hftlk Toplam</span>
+      <span class="tleg-item"><span class="tleg-dot" style="background:#F8CBAD;border:1px solid #E0804A"></span>Hftlk Fazla</span>
+      <span class="tleg-item"><span class="tleg-dot" style="background:#00B0F0;border:1px solid #0080B0"></span>Aylık Fazla</span>
+    </div>
+
+    <div class="table-wrapper" id="tableWrapper">
+      <div class="table-empty">
+        <div class="empty-icon" aria-hidden="true">◎</div>
+        <p>Henüz dağıtım yapılmadı.</p>
+        <p style="font-size:.88rem;opacity:.6;margin-top:.4rem">Dağıtım sekmesinden başlatın.</p>
+        <button class="btn-primary" style="margin-top:1.5rem;width:auto;padding:.65rem 2rem" onclick="showSection('dagitim')">Dağıtım Yap →</button>
+      </div>
+    </div>
+  </section>
+
+
+  <br><br><br><br><br><br><br><br><br>
+</main>
+
+<!-- ═══ MODALS ═══ -->
+<!-- Holiday Modal -->
+<div class="modal-overlay" id="holidayModal" role="dialog" aria-modal="true" aria-labelledby="holidayModalTitle">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3 class="modal-title" id="holidayModalTitle">⊛ Resmi Tatil Günleri</h3>
+      <button class="modal-close" onclick="closeModal('holidayModal')" aria-label="Kapat">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-hint">Her satıra bir tarih: <code>GG.AA.YYYY</code> veya <code>YYYY-AA-GG</code></p>
+      <textarea class="modal-textarea" id="holidayText" placeholder="01.01.2025&#10;23.04.2025&#10;19.05.2025&#10;30.08.2025&#10;29.10.2025" aria-label="Tatil tarihleri"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('holidayModal')">İptal</button>
+      <button class="btn-primary btn-inline" onclick="saveHolidays()">Kaydet</button>
+    </div>
+  </div>
+</div>
+
+<!-- Leave Modal -->
+<div class="modal-overlay" id="leaveModal" role="dialog" aria-modal="true" aria-labelledby="leaveModalTitle">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3 class="modal-title" id="leaveModalTitle">📅 İzin Günleri</h3>
+      <button class="modal-close" onclick="closeModal('leaveModal')" aria-label="Kapat">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-hint">Her satıra bir tarih: <code>GG.AA.YYYY</code></p>
+      <textarea class="modal-textarea" id="leaveText" placeholder="10.06.2025&#10;11.06.2025" aria-label="İzin tarihleri"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('leaveModal')">İptal</button>
+      <button class="btn-primary btn-inline" onclick="saveLeave()">Kaydet</button>
+    </div>
+  </div>
+</div>
+
+<!-- Video Modal -->
+<div class="modal-overlay" id="videoModal" role="dialog" aria-modal="true" aria-labelledby="videoModalTitle">
+  <div class="modal-card modal-video">
+    <div class="modal-header">
+      <h3 class="modal-title" id="videoModalTitle">🎬 Nasıl Kullanılır?</h3>
+      <button class="modal-close" onclick="closeVideoModal()" aria-label="Kapat">✕</button>
+    </div>
+    <div class="modal-body" style="padding:0">
+      <div class="video-container">
+        <iframe id="videoIframe" src="" title="Demo Video" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Loading -->
+<div class="loading-overlay" id="loadingOverlay" aria-live="polite" role="status">
+  <div class="loading-card">
+    <div class="loading-spinner"></div>
+    <div class="loading-text" id="loadingText">Dağıtım hesaplanıyor...</div>
+  </div>
+</div>
+
+<!-- Uygulama betikleri: yükleme SIRASI önemlidir (her biri bir öncekine bağımlı) -->
+<script src="app.core.js"></script>
+<script src="app.ui.js"></script>
+<script src="app.personel.js"></script>
+<script src="app.distribution.js"></script>
+<script src="app.export.js"></script>
+<script src="app.calendar.js"></script>
+<script src="app.extras.js"></script>
+<script src="app.patch.js"></script>
+<script src="app.init.js"></script>
+</body>
+</html>
