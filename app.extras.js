@@ -12,7 +12,7 @@
 /* ── AYARLAR (burayı düzenleyin) ─────────────────────────── */
 const APP_VERSION  = '3.2';
 // Geri bildirim sitenizin adresi. Alt ismi belirleyince sadece bu satırı değiştirin:
-const FEEDBACK_URL = 'https://emvalis.rf.gd';
+const FEEDBACK_URL = 'https://emvalis.github.io/geri-bildirim/';
 
 (function(){
   const $ = id => document.getElementById(id);
@@ -473,37 +473,10 @@ const FEEDBACK_URL = 'https://emvalis.rf.gd';
     return `${FEEDBACK_URL}${sep}v=${APP_VERSION}&sayfa=${encodeURIComponent(sec.replace('sec-',''))}`;
   }
 
-  let qrLoad = null;
-  function loadQR(){
-    if (window.qrcode) return Promise.resolve();
-    if (qrLoad) return qrLoad;
-    return qrLoad = new Promise((ok, no) => {
-      const s = document.createElement('script');
-      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js';
-      s.onload = ok; s.onerror = () => { qrLoad = null; no(); };
-      document.head.appendChild(s);
-    });
-  }
-  function qrSvg(text){
-    const q = qrcode(0,'M'); q.addData(text); q.make();
-    const n = q.getModuleCount(); let d = '';
-    for (let r=0;r<n;r++) for (let c=0;c<n;c++) if (q.isDark(r,c)) d += `M${c} ${r}h1v1h-1z`;
-    return `<svg viewBox="0 0 ${n} ${n}" shape-rendering="crispEdges" role="img" aria-label="Geri bildirim sayfası QR kodu"><path d="${d}" fill="#0C0F17"/></svg>`;
-  }
 
   window.openFeedbackModal = function(){
-    const url = feedbackUrl();
-    const card = modalShell('fbModal','💬 Geri Bildirim',`
-      <p class="po-hint" style="text-align:center;margin-bottom:1rem">Görüş, öneri ve bildirimleriniz için QR kodu taratabilirsiniz.</p>
-      <div class="fb-qr" id="fbQr"><div class="fb-fail">QR hazırlanıyor…</div></div>
-      <div class="fb-note"><span aria-hidden="true">📱</span><span><b>Not:</b> Kesintisiz ve sorunsuz bir erişim için lütfen QR kodu <b>mobil cihazınızla</b> taratınız.</span></div>
-      <a class="btn-primary fb-go" href="${esc(url)}" target="_blank" rel="noopener">Doğrudan bağlantıya git →</a>`);
-    card.classList.remove('modal-wide'); card.style.width = 'min(400px,100%)';
-    openModal('fbModal');
-    const put = h => { const b = $('fbQr'); if (b) b.innerHTML = h; };
-    loadQR().then(() => put(qrSvg(url)))
-            .catch(() => put('<div class="fb-fail">QR kodu oluşturulamadı.<br>Aşağıdaki düğmeyi kullanabilirsiniz.</div>'));
-  };
+    window.open(feedbackUrl(), '_blank', 'noopener');
+  };  
 
   function buildFab(){
     if ($('fabRoot')) return;
