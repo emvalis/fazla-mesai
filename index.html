@@ -449,6 +449,7 @@
       <h2 class="panel-title" id="rapor-title">Mesai Çizelgesi</h2>
       <div class="rapor-actions">
         <button class="btn-excel" onclick="exportExcel()" aria-label="XLSX indir (Ctrl+E)">📥 XLSX İndir</button>
+        <button class="btn-excel btn-pdf" onclick="exportPDF()" aria-label="PDF indir">📄 PDF İndir</button>
         <!-- <button class="btn-secondary" onclick="window.print()" aria-label="Yazdır">🖨️</button> -->
       </div>
     </div>
@@ -556,6 +557,26 @@
     <div class="loading-text" id="loadingText">Dağıtım hesaplanıyor...</div>
   </div>
 </div>
+
+
+
+<!-- XLSX indirme bilgi kartı -->
+<div class="xlsx-tip" id="xlsxTip" role="dialog" aria-labelledby="xlsxTipTitle">
+  <button class="xlsx-tip-close" onclick="closeXlsxTip()" aria-label="Kapat">✕</button>
+  <div class="xlsx-tip-head">
+    <span class="xlsx-tip-icon">🛡️</span>
+    <h3 id="xlsxTipTitle">Dosyayı açmadan önce</h3>
+  </div>
+  <p class="xlsx-tip-lead">Windows, internetten inen dosyaları güvenlik için engelleyebilir. Excel'de sorunsuz açmak için şu adımları izleyin:</p>
+  <ol class="xlsx-tip-steps">
+    <li><span>1</span><div><strong>İndirilenler</strong> klasörünü açın</div></li>
+    <li><span>2</span><div>Dosyaya <strong>sağ tıklayıp Özellikler</strong>'e tıklayın</div></li>
+    <li><span>3</span><div>Sağ alt kısımdaki <strong>Engellemeyi Kaldır</strong> kutusunu işaretleyip <strong>Tamam</strong>'a basın</div></li>
+  </ol>
+  <button class="xlsx-tip-btn" onclick="confirmExcelDownload()">✓ Anladım, indir</button>
+  <div class="xlsx-tip-note">💡 PDF çıktısında bu işleme gerek yoktur.</div>
+</div>
+
 
 <!-- Uygulama betikleri: yükleme SIRASI önemlidir (her biri bir öncekine bağımlı) -->
 <script src="app.core.js"></script>

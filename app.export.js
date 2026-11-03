@@ -9,7 +9,15 @@
 'use strict';
 
 /* ── XLSX EXPORT ─────────────────────────────────────────── */
-async function exportExcel() {
+/* ── XLSX: önce bilgi kartı açılır, "Anladım, indir" ile iner ── */
+function exportExcel() {
+  if(!state.lastResult){notify('Önce dağıtım yapın!','error');Sounds.error();return;}
+  openXlsxTip();
+}
+function openXlsxTip(){ document.getElementById('xlsxTip').classList.add('show'); }
+function closeXlsxTip(){ document.getElementById('xlsxTip').classList.remove('show'); }
+
+async function confirmExcelDownload() {
   if(!state.lastResult){notify('Önce dağıtım yapın!','error');Sounds.error();return;}
   if(document.getElementById('loadingOverlay').classList.contains('active')) return; // çift tıklama koruması
   document.getElementById('loadingOverlay').classList.add('active');
@@ -24,7 +32,154 @@ async function exportExcel() {
   }
 }
 
-async function _generateXLSX({assigned,allDates,holidays,year,month,grup,weOK}) {
+
+/* ── PDF: XLSX ile aynı hücre düzeninden, A4 yatay ── */
+async function exportPDF() {
+  if(!state.lastResult){notify('Önce dağıtım yapın!','error');Sounds.error();return;}
+  const ov=document.getElementById('loadingOverlay');
+  if(ov.classList.contains('active')) return;
+  ov.classList.add('active');
+  try {
+    if(!window.jspdf) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+    if(!(window.pdfMake&&window.pdfMake.vfs)) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js'); // Roboto (Türkçe karakter)
+
+    const r=state.lastResult;
+    const ws=await _generateXLSX(r,true);          // XLSX ile birebir aynı sayfa, indirmeden
+    const doc=new window.jspdf.jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+    const v=window.pdfMake.vfs;
+    doc.addFileToVFS('Roboto-Regular.ttf',v['Roboto-Regular.ttf']); doc.addFont('Roboto-Regular.ttf','Roboto','normal');
+    doc.addFileToVFS('Roboto-Medium.ttf',v['Roboto-Medium.ttf']);   doc.addFont('Roboto-Medium.ttf','Roboto','bold');
+
+    _renderWorksheetPDF(doc,ws,r.assigned.length,r.grup,r.year,r.month);
+
+    downloadFile(doc.output('arraybuffer'),`fazla_mesai_${r.grup}_${r.year}_${pad(r.month)}.pdf`,'application/pdf');
+    Sounds.excel();
+    notify('PDF başarıyla indirildi!','success');
+  } catch(e) {
+    notify('PDF hatası: '+e.message,'error'); Sounds.error(); console.error(e);
+  } finally {
+    ov.classList.remove('active');
+  }
+}
+
+/* ── XLSX çalışma sayfasını (ExcelJS ws) PDF'e çizer ── */
+function _renderWorksheetPDF(doc, ws, nPersons, grup, year, month) {
+  const PT=0.352778, PXMM=25.4/96;
+  const PAGE_W=297, PAGE_H=210, ML=2.54, MR=2.54, MT=7.6, MB=10.2;      // A4 yatay, Excel kenar boşlukları
+  const colPx=w=>Math.trunc(((256*w+Math.trunc(128/7))/256)*7);
+  const totC=ws.columnCount;
+  const natW=Array.from({length:totC},(_,i)=>colPx(ws.getColumn(i+1).width||8.43)*PXMM);
+  const natTotal=natW.reduce((a,b)=>a+b,0);
+  const S=Math.min(1,(PAGE_W-ML-MR)/natTotal);                            // "tüm sütunları 1 sayfaya sığdır"
+  const colW=natW.map(w=>w*S);
+  const colX=[0]; colW.forEach(w=>colX.push(colX[colX.length-1]+w));
+  const X0=(PAGE_W-colX[totC])/2;                                          // yatay ortala
+  const rowH=r=>((ws.getRow(r).height)||15)*PT*S;
+
+  // birleşik hücreler
+  const master={}, slave={};
+  (ws.model.merges||[]).forEach(a=>{
+    const [p,q]=a.split(':'); const A=ws.getCell(p), B=ws.getCell(q);
+    master[A.row+','+A.col]={r2:B.row,c2:B.col};
+    for(let r=A.row;r<=B.row;r++)for(let c=A.col;c<=B.col;c++) if(r!==A.row||c!==A.col) slave[r+','+c]=1;
+  });
+
+  const HR=4, lastData=HR+nPersons*2, fLabel=lastData+2, fLine=fLabel+1;
+  const hdrH=[1,2,3,4].reduce((a,r)=>a+rowH(r),0);
+  const personH=rowH(HR+1)+rowH(HR+2);
+  const footH=rowH(lastData+1)+rowH(fLabel)+rowH(fLine);
+  const avail=(PAGE_H-MT-MB)*.99;
+  const cap=Math.max(1,Math.floor((avail-hdrH)/personH));
+  const capLast=Math.max(1,Math.floor((avail-hdrH-footH)/personH));
+  const pages=[]; let rem=nPersons;
+  while(rem>0){
+    if(rem<=capLast){pages.push(rem);rem=0;}
+    else if(rem<=cap){const f=Math.ceil(rem/2);pages.push(f);pages.push(rem-f);rem=0;}
+    else{pages.push(cap);rem-=cap;}
+  }
+  if(!pages.length) pages.push(0);
+
+  const rgb=a=>{a=String(a||'').slice(-6);return [parseInt(a.slice(0,2),16),parseInt(a.slice(2,4),16),parseInt(a.slice(4,6),16)];};
+  const fmtVal=c=>{
+    let v=c.value; if(v==null||v==='') return '';
+    if(v instanceof Date){const p=n=>String(n).padStart(2,'0');return `${p(v.getUTCDate())}.${p(v.getUTCMonth()+1)}.${v.getUTCFullYear()}`;}
+    if(typeof v==='object'){ if(v.richText) return v.richText.map(t=>t.text).join(''); if(v.result!=null) return String(v.result); return String(c.text||''); }
+    return String(v);
+  };
+
+  let personIdx=0;
+  pages.forEach((count,pi)=>{
+    if(pi>0) doc.addPage('a4','landscape');
+    const rows=[1,2,3,4];
+    for(let i=0;i<count;i++){rows.push(HR+1+(personIdx+i)*2, HR+2+(personIdx+i)*2);}
+    personIdx+=count;
+    if(pi===pages.length-1) rows.push(lastData+1,fLabel,fLine);
+    const rowY={}; let y=MT; rows.forEach(r=>{rowY[r]=y;y+=rowH(r);});
+
+    // 1. geçiş: dolgu + kenarlıklar
+    doc.setDrawColor(0,0,0);
+    rows.forEach(r=>{
+      for(let c=1;c<=totC;c++){
+        const cell=ws.getRow(r).getCell(c); const x=X0+colX[c-1], w=colW[c-1], h=rowH(r), yy=rowY[r];
+        const f=cell.fill;
+        if(f&&f.fgColor&&f.fgColor.argb){const [R,G,B]=rgb(f.fgColor.argb);doc.setFillColor(R,G,B);doc.rect(x,yy,w,h,'F');}
+        const b=cell.border||{}; doc.setLineWidth(Math.max(.08,.75*PT*S));
+        if(b.top   &&b.top.style)    doc.line(x,yy,x+w,yy);
+        if(b.bottom&&b.bottom.style) doc.line(x,yy+h,x+w,yy+h);
+        if(b.left  &&b.left.style)   doc.line(x,yy,x,yy+h);
+        if(b.right &&b.right.style)  doc.line(x+w,yy,x+w,yy+h);
+      }
+    });
+
+    // 2. geçiş: yazılar (birleşik bloğun tamamına ortalanır)
+    rows.forEach(r=>{
+      for(let c=1;c<=totC;c++){
+        if(slave[r+','+c]) continue;
+        const cell=ws.getRow(r).getCell(c); const txt=fmtVal(cell); if(!txt) continue;
+        const m=master[r+','+c]; const r2=m?m.r2:r, c2=m?m.c2:c;
+        const x=X0+colX[c-1], w=colX[c2]-colX[c-1];
+        let h=0; for(let k=r;k<=r2;k++) h+=rowH(k);
+        const yy=rowY[r];
+        const fo=cell.font||{}, al=cell.alignment||{};
+        const rot=al.textRotation===90, pad=.4;
+        const along=(rot?h:w)-2*pad, across=(rot?w:h)-2*pad;
+        let size=(fo.size||10)*S*.9, lines, lh, cap;                  // Roboto, Calibri'den geniş → %10 küçült
+        doc.setFont('Roboto',fo.bold?'bold':'normal');
+        for(let it=0;it<14;it++){                                      // hücreye sığana kadar küçült
+          doc.setFontSize(size); lh=size*PT*1.18; cap=size*PT*.72;
+          lines=al.wrapText?doc.splitTextToSize(txt,along):[txt];
+          const wordMax=Math.max(...txt.split(/\s+/).map(t=>doc.getTextWidth(t)));
+          const lineMax=Math.max(...lines.map(t=>doc.getTextWidth(t)));
+          const ok=(al.wrapText?wordMax:lineMax)<=along && lines.length*size*PT<=((rot?w:h))*1.05;
+          if(ok) break; size*=.93;
+        }
+        const n=lines.length; doc.setTextColor(0,0,0);
+        if(rot){
+          lines.forEach((ln,i)=>{
+            const tw=doc.getTextWidth(ln);
+            const bx=x+w/2+(i-(n-1)/2)*lh+cap/2;
+            doc.text(ln,bx,yy+h/2+tw/2,{angle:90});
+          });
+        }else{
+          lines.forEach((ln,i)=>{
+            const by=yy+h/2+(i-(n-1)/2)*lh+cap/2;
+            doc.text(ln,x+w/2,by,{align:'center'});
+          });
+        }
+      }
+    });
+
+    // alt bilgi (Excel'deki sayfa altlığı)
+    doc.setFont('Roboto','normal'); doc.setFontSize(7); doc.setTextColor(0,0,0);
+    doc.text('Emvalis — Fazla Mesai Dağıtım Sistemi',ML+2,PAGE_H-4.5);
+    doc.text(`Sayfa ${pi+1} / ${pages.length}`,PAGE_W/2,PAGE_H-4.5,{align:'center'});
+    doc.text(new Date().toLocaleDateString('tr-TR'),PAGE_W-MR-2,PAGE_H-4.5,{align:'right'});
+  });
+}
+
+
+
+async function _generateXLSX({assigned,allDates,holidays,year,month,grup,weOK}, returnWs=false) {
   if(!window.ExcelJS) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js');
   const wb=new ExcelJS.Workbook();
   wb.creator='Emvalis'; wb.lastModifiedBy='Emvalis'; wb.created=new Date(); wb.modified=new Date();
@@ -271,6 +426,7 @@ async function _generateXLSX({assigned,allDates,holidays,year,month,grup,weOK}) 
   // ── Ekran görünümü: SABİT BÖLME YOK — sağa/sola/aşağı kaydırınca tüm tablo birlikte kayar ──
   ws.views=[{state:'normal',showGridLines:true}];
 
+  if(returnWs) return ws;   // PDF için: dosyayı indirmeden sayfayı döndür
   const buf=await wb.xlsx.writeBuffer();
   downloadFile(new Uint8Array(buf),`fazla_mesai_${grup}_${year}_${pad(month)}.xlsx`,'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 }
